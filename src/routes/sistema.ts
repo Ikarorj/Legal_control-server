@@ -73,6 +73,59 @@ router.post('/clients', async (req, res) => {
   }
 });
 
+// Atualiza cliente
+router.put('/clients/:id', async (req, res) => { 
+  const { id } = req.params;
+  const { name, cpf, email, phone, accessKey, createdAt, updatedAt } = req.body;
+
+
+  try {
+    const now = new Date();
+
+    // Pega accessKey e createdBy atuais do banco
+    const currentResult = await pool.query('SELECT accesskey, createdby FROM client WHERE id = $1', [id]);
+     const currentAccessKey = currentResult.rows[0].accesskey;
+        const currentCreatedBy = currentResult.rows[0].createdby;
+
+    
+    const safeAccessKey = accessKey ?? currentAccessKey; // usa o atual se não veio no corpo
+   const result = await pool.query(
+  `UPDATE client SET
+    name = $1,
+    cpf = $2,
+    email = $3,
+    phone = $4,
+    accessKey = $5,
+    createdAt = $6,
+    updatedAt = $7,
+    createdBy = $8
+  WHERE id = $9 RETURNING *`,
+  [name, cpf, email, phone, safeAccessKey, createdAt ?? now, updatedAt ?? now, currentCreatedBy, id] // ✅ agora são 9 parâmetros
+);
+    if (result.rows.length > 0) {
+      res.json(result.rows[0]);
+    } else {
+      res.status(404).json({ error: 'Cliente não encontrado' });
+    }
+  } catch (error) {
+    console.error('Erro ao atualizar cliente:', error);
+    res.status(500).json({ error: 'Erro ao atualizar cliente' });
+  }
+}   
+);
+   
+// Remove cliente
+router.delete('/clients/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query(`DELETE FROM client WHERE id = $1`, [id]);
+    res.json({ message: 'Cliente removido com sucesso' });
+  } catch (error) {
+    console.error('Erro ao remover cliente:', error);
+    res.status(500).json({ error: 'Erro ao remover cliente' });
+  }
+}
+);
 
 
 // Processos
