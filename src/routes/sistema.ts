@@ -144,27 +144,31 @@ router.get('/processUpdate', async (req, res) => {
 router.get('/processes', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT
-        p.*,
-        sp.nome AS situacao_prisional,
-        cv.nome AS comarca_vara,
-        tc.nome AS tipo_crime,
-        COALESCE(json_agg(
-          json_build_object(
-            'id', pu.id,
-            'description', pu.description,
-            'author', pu.author,
-            'date', pu.date
-          )
-        ) FILTER (WHERE pu.id IS NOT NULL), '[]') AS updates
-      FROM process p
-      LEFT JOIN situacaoprisional sp ON sp.id = p.situacaoprisionalid
-      LEFT JOIN comarcavara cv ON cv.id = p.comarcavaraid
-      LEFT JOIN tipocrime tc ON tc.id = p.tipocrimeid
-      LEFT JOIN processupdate pu ON pu.processid = p.id
-      GROUP BY p.id, sp.nome, cv.nome, tc.nome
-      ORDER BY p.id;
-    `);
+ SELECT
+  p.*,
+  c.name AS client_name,
+  sp.name AS situacao_prisional,
+  cv.name AS comarca_vara,
+  tc.name AS tipo_crime,
+  COALESCE(json_agg(
+    json_build_object(
+      'id', pu.id,
+      'description', pu.description,
+      'author', pu.author,
+      'date', pu.date
+    )
+  ) FILTER (WHERE pu.id IS NOT NULL), '[]') AS updates
+FROM process p
+LEFT JOIN client c ON c.id = p.clientid
+LEFT JOIN situacaoprisional sp ON sp.id = p.situacaoprisionalid
+LEFT JOIN comarcavara cv ON cv.id = p.comarcavaraid
+LEFT JOIN tipocrime tc ON tc.id = p.tipocrimeid
+LEFT JOIN processupdate pu ON pu.processid = p.id
+GROUP BY p.id, c.name, sp.name, cv.name, tc.name
+ORDER BY p.id;
+
+`);
+
 
     res.json(result.rows);
   } catch (error) {
