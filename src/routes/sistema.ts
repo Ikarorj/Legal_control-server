@@ -128,16 +128,51 @@ router.delete('/clients/:id', async (req, res) => {
 );
 
 
+
+// processUpdate
+router.get('/processUpdate', async (req, res) => {
+  try { 
+    const result = await pool.query('SELECT * FROM processUpdate');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Erro ao buscar atualizações de processos:', error);
+    res.status(500).json({ error: 'Erro ao buscar atualizações de processos' });
+  }
+});
+
 // Processos
 router.get('/processes', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM process');
+    const result = await pool.query(`
+      SELECT
+        p.*,
+        sp.nome AS situacao_prisional,
+        cv.nome AS comarca_vara,
+        tc.nome AS tipo_crime,
+        COALESCE(json_agg(
+          json_build_object(
+            'id', pu.id,
+            'description', pu.description,
+            'author', pu.author,
+            'date', pu.date
+          )
+        ) FILTER (WHERE pu.id IS NOT NULL), '[]') AS updates
+      FROM process p
+      LEFT JOIN situacaoprisional sp ON sp.id = p.situacaoprisionalid
+      LEFT JOIN comarcavara cv ON cv.id = p.comarcavaraid
+      LEFT JOIN tipocrime tc ON tc.id = p.tipocrimeid
+      LEFT JOIN processupdate pu ON pu.processid = p.id
+      GROUP BY p.id, sp.nome, cv.nome, tc.nome
+      ORDER BY p.id;
+    `);
+
     res.json(result.rows);
   } catch (error) {
-    console.error('Erro ao buscar processos:', error);
+    console.error('Erro ao buscar processos com detalhes:', error);
     res.status(500).json({ error: 'Erro ao buscar processos' });
   }
 });
+
 
 router.post('/processes', async (req, res) => {
   const {
