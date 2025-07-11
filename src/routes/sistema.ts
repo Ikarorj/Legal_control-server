@@ -1,3 +1,4 @@
+
 // Ajustes completos para que o servidor use os nomes corretos das tabelas e campos
 
 import { Router } from 'express';
@@ -20,6 +21,7 @@ router.get('/user', async (req, res) => {
     res.status(500).json({ error: 'Erro ao buscar usuários' });
   }
 });
+
 router.post('/user/login', async (req, res) => {
   const { email, password } = req.body; 
   try {
@@ -52,19 +54,15 @@ router.get('/clients', async (req, res) => {
 router.post('/clients', async (req, res) => {
   console.log('🟨 Dados completos recebidos no body:', req.body);
 
-  // Pega tudo, mas ignora o id para o INSERT
-  const { id, name, cpf, email, phone, accessKey, createdAt, updatedAt, createdBy } = req.body;
+  const { name, cpf, email, phone, accessKey, createdBy } = req.body;
 
   try {
     const now = new Date();
-    console.log({
-  name, cpf, email, phone, accessKey, createdAt, updatedAt, createdBy
-});
 
     const result = await pool.query(
-      `INSERT INTO client (name, cpf, email, phone, accessKey, createdAt, updatedAt, createdBy)
+      `INSERT INTO client (name, cpf, email, phone, accesskey, createdat, updatedat, createdby)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [name, cpf, email, phone, accessKey, createdAt ?? now, updatedAt ?? now, createdBy]
+      [name, cpf, email, phone, accessKey, now, now, createdBy || 1]
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -74,34 +72,25 @@ router.post('/clients', async (req, res) => {
 });
 
 // Atualiza cliente
-router.put('/clients/:id', async (req, res) => { 
+router.put('/clients/:id', async (req, res) => {
   const { id } = req.params;
-  const { name, cpf, email, phone, accessKey, createdAt, updatedAt } = req.body;
-
+  const { name, cpf, email, phone, accessKey, updatedBy } = req.body;
 
   try {
     const now = new Date();
-
-    // Pega accessKey e createdBy atuais do banco
-    const currentResult = await pool.query('SELECT accesskey, createdby FROM client WHERE id = $1', [id]);
-     const currentAccessKey = currentResult.rows[0].accesskey;
-        const currentCreatedBy = currentResult.rows[0].createdby;
-
+    const result = await pool.query(
+      `UPDATE client SET
+        name = $1,
+        cpf = $2,
+        email = $3,
+        phone = $4,
+        accesskey = $5,
+        updatedat = $6,
+        updatedby = $7
+      WHERE id = $8 RETURNING *`,
+      [name, cpf, email, phone, accessKey, now, updatedBy || 1, id]
+    );
     
-    const safeAccessKey = accessKey ?? currentAccessKey; // usa o atual se não veio no corpo
-   const result = await pool.query(
-  `UPDATE client SET
-    name = $1,
-    cpf = $2,
-    email = $3,
-    phone = $4,
-    accessKey = $5,
-    createdAt = $6,
-    updatedAt = $7,
-    createdBy = $8
-  WHERE id = $9 RETURNING *`,
-  [name, cpf, email, phone, safeAccessKey, createdAt ?? now, updatedAt ?? now, currentCreatedBy, id] // ✅ agora são 9 parâmetros
-);
     if (result.rows.length > 0) {
       res.json(result.rows[0]);
     } else {
@@ -111,8 +100,7 @@ router.put('/clients/:id', async (req, res) => {
     console.error('Erro ao atualizar cliente:', error);
     res.status(500).json({ error: 'Erro ao atualizar cliente' });
   }
-}   
-);
+});
    
 // Remove cliente
 router.delete('/clients/:id', async (req, res) => {
@@ -124,15 +112,12 @@ router.delete('/clients/:id', async (req, res) => {
     console.error('Erro ao remover cliente:', error);
     res.status(500).json({ error: 'Erro ao remover cliente' });
   }
-}
-);
+});
 
-
-
-// processUpdate
+// Process Updates
 router.get('/processUpdate', async (req, res) => {
   try { 
-    const result = await pool.query('SELECT * FROM processUpdate');
+    const result = await pool.query('SELECT * FROM processupdate');
     res.json(result.rows);
   } catch (error) {
     console.error('Erro ao buscar atualizações de processos:', error);
@@ -140,35 +125,85 @@ router.get('/processUpdate', async (req, res) => {
   }
 });
 
+router.post('/processUpdate', async (req, res) => {
+  const { processId, date, description, author } = req.body;
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO processupdate (processid, date, description, author)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [processId, date, description, author]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Erro ao adicionar atualização de processo:', error);
+    res.status(500).json({ error: 'Erro ao adicionar atualização de processo' });
+  }
+});
+
+router.put('/processUpdate/:id', async (req, res) => {
+  const { id } = req.params;
+  const { date, description, author } = req.body;
+
+  try {
+    const result = await pool.query(
+      `UPDATE processupdate SET
+        date = $1,
+        description = $2,
+        author = $3
+      WHERE id = $4 RETURNING *`,
+      [date, description, author, id]
+    );
+    
+    if (result.rows.length > 0) {
+      res.json(result.rows[0]);
+    } else {
+      res.status(404).json({ error: 'Atualização não encontrada' });
+    }
+  } catch (error) {
+    console.error('Erro ao atualizar processo update:', error);
+    res.status(500).json({ error: 'Erro ao atualizar processo update' });
+  }
+});
+
+router.delete('/processUpdate/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query(`DELETE FROM processupdate WHERE id = $1`, [id]);
+    res.json({ message: 'Atualização removida com sucesso' });
+  } catch (error) {
+    console.error('Erro ao remover atualização:', error);
+    res.status(500).json({ error: 'Erro ao remover atualização' });
+  }
+});
+
 // Processos
 router.get('/processes', async (req, res) => {
   try {
     const result = await pool.query(`
- SELECT
-  p.*,
-  c.name AS client_name,
-  sp.name AS situacao_prisional,
-  cv.name AS comarca_vara,
-  tc.name AS tipo_crime,
-  COALESCE(json_agg(
-    json_build_object(
-      'id', pu.id,
-      'description', pu.description,
-      'author', pu.author,
-      'date', pu.date
-    )
-  ) FILTER (WHERE pu.id IS NOT NULL), '[]') AS updates
-FROM process p
-LEFT JOIN client c ON c.id = p.clientid
-LEFT JOIN situacaoprisional sp ON sp.id = p.situacaoprisionalid
-LEFT JOIN comarcavara cv ON cv.id = p.comarcavaraid
-LEFT JOIN tipocrime tc ON tc.id = p.tipocrimeid
-LEFT JOIN processupdate pu ON pu.processid = p.id
-GROUP BY p.id, c.name, sp.name, cv.name, tc.name
-ORDER BY p.id;
-
-`);
-
+      SELECT
+        p.*,
+        c.name AS client_name,
+        sp.name AS situacao_prisional,
+        cv.name AS comarca_vara,
+        tc.name AS tipo_crime,
+        COALESCE(json_agg(
+          json_build_object(
+            'id', pu.id,
+            'description', pu.description,
+            'author', pu.author,
+            'date', pu.date
+          )
+        ) FILTER (WHERE pu.id IS NOT NULL), '[]') AS updates
+      FROM process p
+      LEFT JOIN client c ON c.id = p.clientid
+      LEFT JOIN situacaoprisional sp ON sp.id = p.situacaoprisionalid
+      LEFT JOIN comarcavara cv ON cv.id = p.comarcavaraid
+      LEFT JOIN tipocrime tc ON tc.id = p.tipocrimeid
+      LEFT JOIN processupdate pu ON pu.processid = p.id
+      GROUP BY p.id, c.name, sp.name, cv.name, tc.name
+      ORDER BY p.id;
+    `);
 
     res.json(result.rows);
   } catch (error) {
@@ -176,7 +211,6 @@ ORDER BY p.id;
     res.status(500).json({ error: 'Erro ao buscar processos' });
   }
 });
-
 
 router.post('/processes', async (req, res) => {
   const {
@@ -195,11 +229,13 @@ router.post('/processes', async (req, res) => {
 
   try {
     const now = lastUpdate ? new Date(lastUpdate) : new Date();
-    const result = await pool.query(
+
+    // Primeiro faz o INSERT usando nomes corretos das colunas
+    const insertResult = await pool.query(
       `INSERT INTO process (
-        clientId, processNumber, title, status, startDate, lastUpdate,
-        description, lawyer, situacaoPrisionalId, comarcaVaraId, tipoCrimeId
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+        clientid, processnumber, title, status, startdate, lastupdate,
+        description, lawyer, situacaoprisionalid, comarcavaraid, tipocrimeid
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
       [
         clientId,
         processNumber,
@@ -214,6 +250,27 @@ router.post('/processes', async (req, res) => {
         tipoCrimeId
       ]
     );
+
+    const processId = insertResult.rows[0].id;
+
+    // Agora busca com JOINs o processo recém-inserido
+    const result = await pool.query(`
+      SELECT
+        p.*,
+        c.name AS client_name,
+        sp.name AS situacao_prisional,
+        cv.name AS comarca_vara,
+        tc.name AS tipo_crime,
+        '[]'::json AS updates
+      FROM process p
+      LEFT JOIN client c ON c.id = p.clientid
+      LEFT JOIN situacaoprisional sp ON sp.id = p.situacaoprisionalid
+      LEFT JOIN comarcavara cv ON cv.id = p.comarcavaraid
+      LEFT JOIN tipocrime tc ON tc.id = p.tipocrimeid
+      WHERE p.id = $1
+      GROUP BY p.id, c.name, sp.name, cv.name, tc.name
+    `, [processId]);
+
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Erro ao cadastrar processo:', error);
@@ -241,17 +298,17 @@ router.put('/processes/:id', async (req, res) => {
     const now = lastUpdate ? new Date(lastUpdate) : new Date();
     const result = await pool.query(
       `UPDATE process SET
-        clientId = $1,
-        processNumber = $2,
+        clientid = $1,
+        processnumber = $2,
         title = $3,
         status = $4,
-        startDate = $5,
-        lastUpdate = $6,
+        startdate = $5,
+        lastupdate = $6,
         description = $7,
         lawyer = $8,
-        situacaoPrisionalId = $9,
-        comarcaVaraId = $10,
-        tipoCrimeId = $11
+        situacaoprisionalid = $9,
+        comarcavaraid = $10,
+        tipocrimeid = $11
       WHERE id = $12 RETURNING *`,
       [
         clientId,
@@ -289,7 +346,7 @@ router.delete('/processes/:id', async (req, res) => {
 // Tipos de Crime
 router.get('/tiposCrime', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM tipoCrime');
+    const result = await pool.query('SELECT * FROM tipocrime');
     res.json(result.rows);
   } catch (error) {
     console.error('Erro ao buscar tipos de crime:', error);
@@ -297,10 +354,52 @@ router.get('/tiposCrime', async (req, res) => {
   }
 });
 
+router.post('/tiposCrime', async (req, res) => {
+  const { name } = req.body;
+  try {
+    const result = await pool.query(
+      'INSERT INTO tipocrime (name) VALUES ($1) RETURNING *',
+      [name]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Erro ao adicionar tipo de crime:', error);
+    res.status(500).json({ error: 'Erro ao adicionar tipo de crime' });
+  }
+});
+router.put('/tiposCrime/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name } = req.body;
+  try {
+    const result = await pool.query(
+      'UPDATE tipocrime SET name = $1 WHERE id = $2 RETURNING *',
+      [name, id]
+    );
+    if (result.rows.length > 0) {
+      res.json(result.rows[0]);
+    } else {
+      res.status(404).json({ error: 'Tipo de crime não encontrado' });
+    }
+  } catch (error) {
+    console.error('Erro ao atualizar tipo de crime:', error);
+    res.status(500).json({ error: 'Erro ao atualizar tipo de crime' });
+  }
+});
+router.delete('/tiposCrime/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('DELETE FROM tipocrime WHERE id = $1', [id]);
+    res.json({ message: 'Tipo de crime removido com sucesso' });
+  } catch (error) {
+    console.error('Erro ao remover tipo de crime:', error);
+    res.status(500).json({ error: 'Erro ao remover tipo de crime' });
+  }
+});
+
 // Comarcas/Varas
 router.get('/comarcasVaras', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM comarcaVara');
+    const result = await pool.query('SELECT * FROM comarcavara');
     res.json(result.rows);
   } catch (error) {
     console.error('Erro ao buscar comarcas/varas:', error);
@@ -308,14 +407,98 @@ router.get('/comarcasVaras', async (req, res) => {
   }
 });
 
+router.post('/comarcasVaras', async (req, res) => {
+  const { name } = req.body;
+  try {
+    const result = await pool.query(
+      'INSERT INTO comarcavara (name) VALUES ($1) RETURNING *',
+      [name]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Erro ao adicionar comarca/vara:', error);
+    res.status(500).json({ error: 'Erro ao adicionar comarca/vara' });
+  }
+});
+router.put('/comarcasVaras/:id', async (req, res) => {
+  const { id } = req.params;  
+  const { name } = req.body;
+  try { 
+    const result = await pool.query(
+      'UPDATE comarcavara SET name = $1 WHERE id = $2 RETURNING *',
+      [name, id]
+    );
+    if (result.rows.length > 0) {
+      res.json(result.rows[0]);
+    } else {
+      res.status(404).json({ error: 'Comarca/vara não encontrada' });
+    }
+  } catch (error) {
+    console.error('Erro ao atualizar comarca/vara:', error);
+    res.status(500).json({ error: 'Erro ao atualizar comarca/vara' });
+  } 
+});
+router.delete('/comarcasVaras/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('DELETE FROM comarcavara WHERE id = $1', [id]);
+    res.json({ message: 'Comarca/vara removida com sucesso' });
+  } catch (error) {
+    console.error('Erro ao remover comarca/vara:', error);
+    res.status(500).json({ error: 'Erro ao remover comarca/vara' });
+  }
+});
+
 // Situações Prisionais
 router.get('/situacoesPrisionais', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM situacaoPrisional');
+    const result = await pool.query('SELECT * FROM situacaoprisional');
     res.json(result.rows);
   } catch (error) {
     console.error('Erro ao buscar situações prisionais:', error);
     res.status(500).json({ error: 'Erro ao buscar situações prisionais' });
+  }
+});
+
+router.post('/situacoesPrisionais', async (req, res) => {
+  const { name } = req.body;
+  try {
+    const result = await pool.query(
+      'INSERT INTO situacaoprisional (name) VALUES ($1) RETURNING *',
+      [name]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Erro ao adicionar situação prisional:', error);
+    res.status(500).json({ error: 'Erro ao adicionar situação prisional' });
+  }
+});
+router.put('/situacoesPrisionais/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name } = req.body;
+  try {
+    const result = await pool.query(
+      'UPDATE situacaoprisional SET name = $1 WHERE id = $2 RETURNING *',
+      [name, id]
+    );
+    if (result.rows.length > 0) {
+      res.json(result.rows[0]);
+    } else {
+      res.status(404).json({ error: 'Situação prisional não encontrada' });
+    }
+  } catch (error) {
+    console.error('Erro ao atualizar situação prisional:', error);
+    res.status(500).json({ error: 'Erro ao atualizar situação prisional' });
+  }
+});
+router.delete('/situacoesPrisionais/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('DELETE FROM situacaoprisional WHERE id = $1', [id]);
+    res.json({ message: 'Situação prisional removida com sucesso' });
+  } catch (error) {
+    console.error('Erro ao remover situação prisional:', error);
+    res.status(500).json({ error: 'Erro ao remover situação prisional' });
   }
 });
 
