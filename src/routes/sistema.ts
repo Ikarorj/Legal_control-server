@@ -126,8 +126,8 @@ router.get('/processUpdate', async (req, res) => {
 });
 
 router.post('/processUpdate', async (req, res) => {
+  // se o front mandar um objeto o back concert aqui
   const { processId, date, description, author } = req.body;
-
   try {
     const result = await pool.query(
       `INSERT INTO processupdate (processid, date, description, author)
@@ -136,10 +136,11 @@ router.post('/processUpdate', async (req, res) => {
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
-    console.error('Erro ao adicionar atualização de processo:', error);
-    res.status(500).json({ error: 'Erro ao adicionar atualização de processo' });
+    console.error('Erro ao cadastrar atualização de processo:', error);
+    res.status(500).json({ error: 'Erro ao cadastrar atualização de processo' });
   }
 });
+
 
 router.put('/processUpdate/:id', async (req, res) => {
   const { id } = req.params;
@@ -218,8 +219,8 @@ router.post('/processes', async (req, res) => {
     processNumber,
     title,
     status,
-    startDate,
-    lastUpdate,
+    startdate,      // ajustar para o nome enviado pelo frontend
+    lastupdate,     // ajustar para o nome enviado pelo frontend
     description,
     lawyer,
     situacaoPrisionalId,
@@ -228,9 +229,12 @@ router.post('/processes', async (req, res) => {
   } = req.body;
 
   try {
-    const now = lastUpdate ? new Date(lastUpdate) : new Date();
+    // Sempre usa data atual para lastupdate
+    const now = new Date();
 
-    // Primeiro faz o INSERT usando nomes corretos das colunas
+    // Se quiser garantir startdate correto, pode usar startdate do frontend ou now
+    const startDateValue = startdate ? new Date(startdate) : now;
+
     const insertResult = await pool.query(
       `INSERT INTO process (
         clientid, processnumber, title, status, startdate, lastupdate,
@@ -241,7 +245,7 @@ router.post('/processes', async (req, res) => {
         processNumber,
         title,
         status,
-        startDate,
+        startDateValue,
         now,
         description,
         lawyer,
@@ -253,7 +257,7 @@ router.post('/processes', async (req, res) => {
 
     const processId = insertResult.rows[0].id;
 
-    // Agora busca com JOINs o processo recém-inserido
+    // Retorna o processo inserido com joins
     const result = await pool.query(`
       SELECT
         p.*,
@@ -277,6 +281,7 @@ router.post('/processes', async (req, res) => {
     res.status(500).json({ error: 'Erro ao cadastrar processo' });
   }
 });
+
 
 router.put('/processes/:id', async (req, res) => {
   const { id } = req.params;
