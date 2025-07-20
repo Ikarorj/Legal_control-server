@@ -1,23 +1,21 @@
+// server.ts
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-
-import sistemaRoutes from './routes/sistema';
+import sistemaRoutes from './routes';
 
 dotenv.config();
-
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(cors({
-  origin: 'http://192.168.1.7:8080', // ajuste conforme IP do frontend
+  origin: 'http://192.168.1.10:8080',
   credentials: true
 }));
 app.use(express.json());
 
-// Usa a rota base única '/sistema' para todas as rotas
+// Aqui importa todas as rotas organizadas
 app.use('/sistema', sistemaRoutes);
 
 app.listen(PORT, () => {
