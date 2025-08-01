@@ -1,9 +1,6 @@
 import { Request, Response } from 'express';
 import { pool } from '../db';
 import { encrypt, decrypt, crypto, bcrypt } from '../services/kmsService';
-
-// Função para buscar todos os usuários
-
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
     const result = await pool.query('SELECT * FROM "user" WHERE isActive = TRUE');
@@ -62,4 +59,3 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ error: 'Erro ao fazer login' });
   }
 };
-

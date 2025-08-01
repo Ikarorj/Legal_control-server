@@ -10,7 +10,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
-  origin: 'http://192.168.1.9:8080', // ajuste conforme IP do frontend
+   origin: 'http://192.168.1.9:8080', // ajuste conforme IP do frontend
   credentials: true
 }));
 app.use(express.json());
