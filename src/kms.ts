@@ -1,5 +1,6 @@
 const { KeyManagementServiceClient } = require('@google-cloud/kms');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
+
 require('dotenv').config();
 
 

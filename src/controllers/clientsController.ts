@@ -14,12 +14,13 @@ export const getAllClients = async (_req: Request, res: Response) => {
 
 export const createClient = async (req: Request, res: Response) => {
   const { name, cpf, email, phone, accessKey, createdBy } = req.body;
+  const emailEncrypted = encrypt(email)
   try {
     const now = new Date();
     const { rows } = await pool.query(
       `INSERT INTO client (name, cpf, email, phone, accesskey, createdat, updatedat, createdby)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [name, cpf, email, phone, accessKey, now, now, createdBy || 1]
+      [name, cpf, emailEncrypted, phone, accessKey, now, now, createdBy || 1]
     );
     res.status(201).json(rows[0]);
   } catch {
@@ -30,12 +31,13 @@ export const createClient = async (req: Request, res: Response) => {
 export const updateClient = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { name, cpf, email, phone, accessKey, updatedBy } = req.body;
+    const emailEncrypted = encrypt(email)
   try {
     const now = new Date();
     const { rows } = await pool.query(
       `UPDATE client SET name=$1, cpf=$2, email=$3, phone=$4, accesskey=$5, updatedat=$6, updatedby=$7
        WHERE id=$8 RETURNING *`,
-      [name, cpf, email, phone, accessKey, now, updatedBy || 1, id]
+      [name, cpf, emailEncrypted, phone, accessKey, now, updatedBy || 1, id]
     );
     rows[0] ? res.json(rows[0]) : res.status(404).json({ error: 'Cliente não encontrado' });
   } catch {
