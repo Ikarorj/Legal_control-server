@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { pool } from '../db';
-import { encrypt, decrypt } from '../ults/cryptKMS';
+import { encrypt, decrypt } from '../services/kmsService';
 
 
 export const getAllClients = async (_req: Request, res: Response) => {
