@@ -1,26 +1,8 @@
 import { Request, Response } from 'express';
 import { pool } from '../db';
-import { kmsClient, PROJECT_ID, LOCATION_ID, KEY_RING_ID, KEY_ID, bcrypt } from '../kms';
-import crypto from 'crypto';
+import { encrypt, decrypt, crypto, bcrypt } from '../services/kmsService';
 
-function getKeyName(): string {
-  return kmsClient.cryptoKeyPath(PROJECT_ID, LOCATION_ID, KEY_RING_ID, KEY_ID);
-}
-
-async function encrypt(text: string): Promise<string> {
-  const [result] = await kmsClient.encrypt({
-    name: getKeyName(),
-    plaintext: Buffer.from(text),
-  });
-  return result.ciphertext.toString('base64');
-};
-async function decrypt(ciphertext: string): Promise<string> {
-  const [result] = await kmsClient.decrypt({
-    name: getKeyName(),
-    ciphertext: Buffer.from(ciphertext, 'base64'),
-  });
-  return result.plaintext.toString();
-};
+// Função para buscar todos os usuários
 
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
