@@ -1,5 +1,5 @@
 const { KeyManagementServiceClient } = require('@google-cloud/kms');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 
 require('dotenv').config();
 
@@ -8,7 +8,6 @@ require('dotenv').config();
 const kmsClient = new KeyManagementServiceClient({
   keyFilename: process.env.KMS_KEY_FILE,
 });
-
 
 
 // 📌 Configuração do KMS (ajuste com seus dados reais)
