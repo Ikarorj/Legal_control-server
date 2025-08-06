@@ -1,37 +1,67 @@
 import { Request, Response } from 'express';
 import { pool } from '../db';
+import { encrypt, decrypt } from '../services/kmsService';
 
 export const getAllProcessUpdates = async (_req: Request, res: Response) => {
   try {
     const { rows } = await pool.query('SELECT * FROM processupdate');
-    res.json(rows);
+
+    const decryptedRows = await Promise.all(
+      rows.map(async (row) => ({
+        ...row,
+        description: await decrypt(row.description),
+        author: await decrypt(row.author),
+      }))
+    );
+
+    res.json(decryptedRows);
   } catch {
     res.status(500).json({ error: 'Erro ao buscar atualizações' });
   }
 };
 
+
 export const createProcessUpdate = async (req: Request, res: Response) => {
   const { processId, date, description, author } = req.body;
   try {
+    const encryptedDescription = await encrypt(description);
+    const encryptedAuthor = await encrypt(author);
+
     const { rows } = await pool.query(
       `INSERT INTO processupdate (processid, date, description, author) VALUES ($1,$2,$3,$4) RETURNING *`,
-      [processId, date, description, author]
+      [processId, date, encryptedDescription, encryptedAuthor]
     );
+
+    // Descriptografar antes de retornar
+    rows[0].description = await decrypt(rows[0].description);
+    rows[0].author = await decrypt(rows[0].author);
+
     res.status(201).json(rows[0]);
   } catch {
     res.status(500).json({ error: 'Erro ao cadastrar atualização' });
   }
 };
 
+
 export const updateProcessUpdate = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { date, description, author } = req.body;
   try {
+    const encryptedDescription = await encrypt(description);
+    const encryptedAuthor = await encrypt(author);
+
     const { rows } = await pool.query(
       `UPDATE processupdate SET date=$1, description=$2, author=$3 WHERE id=$4 RETURNING *`,
-      [date, description, author, id]
+      [date, encryptedDescription, encryptedAuthor, id]
     );
-    rows[0] ? res.json(rows[0]) : res.status(404).json({ error: 'Atualização não encontrada' });
+
+    if (rows[0]) {
+      rows[0].description = await decrypt(rows[0].description);
+      rows[0].author = await decrypt(rows[0].author);
+      res.json(rows[0]);
+    } else {
+      res.status(404).json({ error: 'Atualização não encontrada' });
+    }
   } catch {
     res.status(500).json({ error: 'Erro ao atualizar atualização' });
   }
