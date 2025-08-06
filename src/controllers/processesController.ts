@@ -3,13 +3,23 @@ import { pool } from '../db';
 import { encrypt, decrypt, crypto, bcrypt } from '../services/kmsService';
 
 // 🔓 Descriptografar os campos sensíveis ao retornar dados
+// 🔓 Descriptografar os campos sensíveis ao retornar dados
 async function decryptProcessFields(process: any) {
+  const decryptedUpdates = await Promise.all(
+    (process.updates || []).map(async (update: any) => ({
+      ...update,
+      description: await decrypt(update.description),
+      author: await decrypt(update.author),
+    }))
+  );
+
   return {
     ...process,
     processnumber: await decrypt(process.processnumber),
     title: await decrypt(process.title),
     description: await decrypt(process.description),
     lawyer: await decrypt(process.lawyer),
+    updates: decryptedUpdates,
   };
 }
 
