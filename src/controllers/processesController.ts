@@ -147,6 +147,10 @@ export const updateProcess = async (req: Request, res: Response) : Promise<void>
 export const deleteProcess = async (req: Request, res: Response) => {
   const { id } = req.params;
   try {
+     // Apaga as atualizações relacionadas ao processo
+    await pool.query('DELETE FROM processUpdate WHERE processupdate.processid = $1', [id]);
+
+    // Agora pode apagar o processo com segurança
     await pool.query('DELETE FROM process WHERE id = $1', [id]);
     res.json({ message: 'Processo removido com sucesso' });
   } catch (error)  {
