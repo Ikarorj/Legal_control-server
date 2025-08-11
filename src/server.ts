@@ -9,8 +9,16 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+
+const allowedOrigins = [
+  'https://process-portal.onrender.com',
+  'https://preview--client-process-portal.lovable.app'
+];
+
+
 app.use(cors({
-   origin: 'https://process-portal.onrender.com', // ajuste conforme IP do frontend
+   origin: allowedOrigins, 
+   // ajuste conforme IP do frontend
   credentials: true
 }));
 app.use(express.json());
