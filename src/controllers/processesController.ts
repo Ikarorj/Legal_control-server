@@ -100,54 +100,84 @@ export const createProcess = async (req: Request, res: Response) => {
   }
 };
 
-export const updateProcess = async (req: Request, res: Response) : Promise<void>=> {
+export const updateProcess = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const {
     clientId, processNumber, title, status,
     startDate, description, lawyer,
     situacaoPrisionalId, comarcaVaraId, tipoCrimeId
   } = req.body;
+
   try {
     const now = new Date();
-     // 🔐 Criptografar campos sensíveis
+    const startDateValue = startDate ? new Date(startDate) : now;
+
+    // 🔐 Criptografar campos sensíveis
     const encryptedProcessNumber = await encrypt(processNumber);
     const encryptedTitle = await encrypt(title);
     const encryptedDescription = await encrypt(description);
     const encryptedLawyer = await encrypt(lawyer);
 
-    const { rows } = await pool.query(
-      `UPDATE process SET clientid=$1, processnumber=$2, title=$3, status=$4, startdate=$5, lastupdate=$6, description=$7, lawyer=$8, situacaoprisionalid=$9, comarcavaraid=$10, tipocrimeid=$11
-       WHERE id=$12 RETURNING *`,
-      [clientId, 
-      encryptedProcessNumber, 
-      encryptedTitle, 
-      status, 
-      startDate, 
-      now, 
-      encryptedDescription, 
-      encryptedLawyer, 
-      situacaoPrisionalId, 
-      comarcaVaraId, 
-      tipoCrimeId, 
-      id]
+    // Primeiro faz o update
+    const { rows: updated } = await pool.query(
+      `UPDATE process 
+       SET clientid=$1, processnumber=$2, title=$3, status=$4, startdate=$5, lastupdate=$6, 
+           description=$7, lawyer=$8, situacaoprisionalid=$9, comarcavaraid=$10, tipocrimeid=$11
+       WHERE id=$12 
+       RETURNING id`,
+      [
+        clientId,
+        encryptedProcessNumber,
+        encryptedTitle,
+        status,
+        startDateValue,
+        now,
+        encryptedDescription,
+        encryptedLawyer,
+        situacaoPrisionalId,
+        comarcaVaraId,
+        tipoCrimeId,
+        id
+      ]
     );
 
-    if (rows.length === 0) {
+    if (updated.length === 0) {
       res.status(404).json({ error: 'Processo não encontrado' });
       return;
     }
+
+    // Depois busca novamente com os JOINs para manter consistência
+    const { rows } = await pool.query(`
+      SELECT p.*, c.name AS client_name, sp.name AS situacao_prisional, cv.name AS comarca_vara, tc.name AS tipo_crime,
+             COALESCE(
+               json_agg(
+                 json_build_object('id', pu.id, 'description', pu.description, 'author', pu.author, 'date', pu.date)
+               ) FILTER (WHERE pu.id IS NOT NULL), '[]'
+             ) AS updates
+      FROM process p
+      LEFT JOIN client c ON c.id = p.clientid
+      LEFT JOIN situacaoprisional sp ON sp.id = p.situacaoprisionalid
+      LEFT JOIN comarcavara cv ON cv.id = p.comarcavaraid
+      LEFT JOIN tipocrime tc ON tc.id = p.tipocrimeid
+      LEFT JOIN processupdate pu ON pu.processid = p.id
+      WHERE p.id = $1
+      GROUP BY p.id, c.name, sp.name, cv.name, tc.name`,
+      [id]
+    );
+
     const decryptedProcess = await decryptProcessFields(rows[0]);
     res.json(decryptedProcess);
+
   } catch (error: any) {
-    console.error('Erro ao atualizar processo:', error); // mostra o erro completo no console
+    console.error('Erro ao atualizar processo:', error);
 
     res.status(500).json({
       error: 'Erro ao atualizar processo',
-      details: error?.message || error // mostra a mensagem do erro para debug
-
-     });
+      details: error?.message || error
+    });
   }
 };
+
 
 export const deleteProcess = async (req: Request, res: Response) => {
   const { id } = req.params;
