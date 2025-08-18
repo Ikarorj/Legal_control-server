@@ -138,9 +138,14 @@ export const updateProcess = async (req: Request, res: Response) : Promise<void>
     }
     const decryptedProcess = await decryptProcessFields(rows[0]);
     res.json(decryptedProcess);
-  } catch (error)  {
-    console.error('Erro ao atualizar processo');
-    res.status(500).json({ error: 'Erro ao atualizar processo' });
+  } catch (error: any) {
+    console.error('Erro ao atualizar processo:', error); // mostra o erro completo no console
+
+    res.status(500).json({
+      error: 'Erro ao atualizar processo',
+      details: error?.message || error // mostra a mensagem do erro para debug
+
+     });
   }
 };
 
