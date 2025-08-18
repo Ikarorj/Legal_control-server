@@ -103,42 +103,49 @@ export const createProcess = async (req: Request, res: Response) => {
 export const updateProcess = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const {
-    clientId, processNumber, title, status,
-    startDate, description, lawyer,
-    situacaoPrisionalId, comarcaVaraId, tipoCrimeId
+    clientId,
+    processNumber,
+    title,
+    status,
+    startDate,
+    description,
+    lawyer,
+    situacaoPrisionalId,
+    comarcaVaraId,
+    tipoCrimeId
   } = req.body;
 
   try {
     const now = new Date();
-    const startDateValue = startDate ? new Date(startDate) : now;
 
-    // 🔐 Criptografar campos sensíveis
-    const encryptedProcessNumber = await encrypt(processNumber);
-    const encryptedTitle = await encrypt(title);
-    const encryptedDescription = await encrypt(description);
-    const encryptedLawyer = await encrypt(lawyer);
+    // Monta arrays dinâmicos para query e valores
+    const fields: string[] = [];
+    const values: any[] = [];
 
-    // Primeiro faz o update
+    if (clientId !== undefined) fields.push(`clientid=$${fields.length + 1}`) && values.push(clientId);
+    if (processNumber !== undefined) fields.push(`processnumber=$${fields.length + 1}`) && values.push(await encrypt(processNumber));
+    if (title !== undefined) fields.push(`title=$${fields.length + 1}`) && values.push(await encrypt(title));
+    if (status !== undefined) fields.push(`status=$${fields.length + 1}`) && values.push(status);
+    if (startDate !== undefined) fields.push(`startdate=$${fields.length + 1}`) && values.push(new Date(startDate));
+    if (description !== undefined) fields.push(`description=$${fields.length + 1}`) && values.push(await encrypt(description));
+    if (lawyer !== undefined) fields.push(`lawyer=$${fields.length + 1}`) && values.push(await encrypt(lawyer));
+    if (situacaoPrisionalId !== undefined) fields.push(`situacaoprisionalid=$${fields.length + 1}`) && values.push(situacaoPrisionalId);
+    if (comarcaVaraId !== undefined) fields.push(`comarcavaraid=$${fields.length + 1}`) && values.push(comarcaVaraId);
+    if (tipoCrimeId !== undefined) fields.push(`tipocrimeid=$${fields.length + 1}`) && values.push(tipoCrimeId);
+
+    // Sempre atualiza a última modificação
+    fields.push(`lastupdate=$${fields.length + 1}`);
+    values.push(now);
+
+    if (fields.length === 0) {
+      res.status(400).json({ error: 'Nenhum campo fornecido para atualizar' });
+      return;
+    }
+
+    values.push(id); // último valor é o id para o WHERE
     const { rows: updated } = await pool.query(
-      `UPDATE process 
-       SET clientid=$1, processnumber=$2, title=$3, status=$4, startdate=$5, lastupdate=$6, 
-           description=$7, lawyer=$8, situacaoprisionalid=$9, comarcavaraid=$10, tipocrimeid=$11
-       WHERE id=$12 
-       RETURNING id`,
-      [
-        clientId,
-        encryptedProcessNumber,
-        encryptedTitle,
-        status,
-        startDateValue,
-        now,
-        encryptedDescription,
-        encryptedLawyer,
-        situacaoPrisionalId,
-        comarcaVaraId,
-        tipoCrimeId,
-        id
-      ]
+      `UPDATE process SET ${fields.join(', ')} WHERE id=$${fields.length + 1} RETURNING id`
+      , values
     );
 
     if (updated.length === 0) {
@@ -146,7 +153,7 @@ export const updateProcess = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // Depois busca novamente com os JOINs para manter consistência
+    // Buscar o processo atualizado com JOINs
     const { rows } = await pool.query(`
       SELECT p.*, c.name AS client_name, sp.name AS situacao_prisional, cv.name AS comarca_vara, tc.name AS tipo_crime,
              COALESCE(
@@ -161,22 +168,18 @@ export const updateProcess = async (req: Request, res: Response): Promise<void> 
       LEFT JOIN tipocrime tc ON tc.id = p.tipocrimeid
       LEFT JOIN processupdate pu ON pu.processid = p.id
       WHERE p.id = $1
-      GROUP BY p.id, c.name, sp.name, cv.name, tc.name`,
-      [id]
-    );
+      GROUP BY p.id, c.name, sp.name, cv.name, tc.name
+    `, [id]);
 
     const decryptedProcess = await decryptProcessFields(rows[0]);
     res.json(decryptedProcess);
 
   } catch (error: any) {
     console.error('Erro ao atualizar processo:', error);
-
-    res.status(500).json({
-      error: 'Erro ao atualizar processo',
-      details: error?.message || error
-    });
+    res.status(500).json({ error: 'Erro ao atualizar processo', details: error?.message || error });
   }
 };
+
 
 
 export const deleteProcess = async (req: Request, res: Response) => {
