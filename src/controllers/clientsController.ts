@@ -127,7 +127,7 @@ export const deleteClient = async (req: Request, res: Response): Promise<void> =
 
     if (error.code === '23503') {
       res.status(400).json({
-        error: 'Não é possível remover o cliente pois ele está vinculado a outro registro.',
+        error: 'Não é possível remover o cliente pois ele está vinculado a um processo.',
       });
       return;
     }
