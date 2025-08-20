@@ -57,8 +57,11 @@ export const createProcess = async (req: Request, res: Response) => {
 
   try {
     const now = new Date();
-    // Garante que apenas a data seja salva (YYYY-MM-DD)
-const startDateValue = startdate ? startdate : now.toISOString().split('T')[0];
+   // Mantém o mesmo dia no fuso local
+const startDateValue = startdate 
+  ? new Date(new Date(startdate).setHours(0,0,0,0)) 
+  : now;
+
 
      // 🔐 Criptografar campos sensíveis
     const encryptedProcessNumber = await encrypt(processNumber);
@@ -129,7 +132,8 @@ export const updateProcess = async (req: Request, res: Response): Promise<void> 
     if (title !== undefined) fields.push(`title=$${fields.length + 1}`) && values.push(await encrypt(title));
     if (status !== undefined) fields.push(`status=$${fields.length + 1}`) && values.push(status);
     if (startDate !== undefined) 
-    fields.push(`startdate=$${fields.length + 1}`) && values.push(startDate);
+  fields.push(`startdate=$${fields.length + 1}`) && values.push(new Date(new Date(startDate).setHours(0,0,0,0)));
+
 
     if (description !== undefined) fields.push(`description=$${fields.length + 1}`) && values.push(await encrypt(description));
     if (lawyer !== undefined) fields.push(`lawyer=$${fields.length + 1}`) && values.push(await encrypt(lawyer));
