@@ -57,7 +57,9 @@ export const createProcess = async (req: Request, res: Response) => {
 
   try {
     const now = new Date();
-    const startDateValue = startdate ? new Date(startdate) : now;
+    // Garante que apenas a data seja salva (YYYY-MM-DD)
+const startDateValue = startdate ? startdate : now.toISOString().split('T')[0];
+
      // 🔐 Criptografar campos sensíveis
     const encryptedProcessNumber = await encrypt(processNumber);
     const encryptedTitle = await encrypt(title);
@@ -126,7 +128,9 @@ export const updateProcess = async (req: Request, res: Response): Promise<void> 
     if (processNumber !== undefined) fields.push(`processnumber=$${fields.length + 1}`) && values.push(await encrypt(processNumber));
     if (title !== undefined) fields.push(`title=$${fields.length + 1}`) && values.push(await encrypt(title));
     if (status !== undefined) fields.push(`status=$${fields.length + 1}`) && values.push(status);
-    if (startDate !== undefined) fields.push(`startdate=$${fields.length + 1}`) && values.push(new Date(startDate));
+    if (startDate !== undefined) 
+    fields.push(`startdate=$${fields.length + 1}`) && values.push(startDate);
+
     if (description !== undefined) fields.push(`description=$${fields.length + 1}`) && values.push(await encrypt(description));
     if (lawyer !== undefined) fields.push(`lawyer=$${fields.length + 1}`) && values.push(await encrypt(lawyer));
     if (situacaoPrisionalId !== undefined) fields.push(`situacaoprisionalid=$${fields.length + 1}`) && values.push(situacaoPrisionalId);
