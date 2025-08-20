@@ -110,12 +110,35 @@ export const updateClient = async (req: Request, res: Response) => {
 };
 
 
-export const deleteClient = async (req: Request, res: Response) => {
+export const deleteClient = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
+
   try {
-    await pool.query('DELETE FROM client WHERE id = $1', [id]);
+    const result = await pool.query('DELETE FROM client WHERE id = $1', [id]);
+
+    if (result.rowCount === 0) {
+      res.status(404).json({ error: 'Cliente não encontrado' });
+      return; // só para encerrar a função
+    }
+
     res.json({ message: 'Cliente removido com sucesso' });
-  } catch {
-    res.status(500).json({ error: 'Erro ao remover cliente' });
+  } catch (error: any) {
+    console.error('Erro ao remover cliente:', error);
+
+    if (error.code === '23503') {
+      res.status(400).json({
+        error: 'Não é possível remover o cliente pois ele está vinculado a outro registro.',
+      });
+      return;
+    }
+
+    if (error.code === '40001') {
+      res.status(409).json({
+        error: 'Conflito de transação. Tente novamente.',
+      });
+      return;
+    }
+
+    res.status(500).json({ error: 'Erro inesperado ao remover cliente' });
   }
 };
