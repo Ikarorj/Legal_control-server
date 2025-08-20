@@ -59,8 +59,9 @@ export const createProcess = async (req: Request, res: Response) => {
     const now = new Date();
    // Mantém o mesmo dia no fuso local
 const startDateValue = startdate 
-  ? new Date(new Date(startdate).setHours(0,0,0,0)) 
+  ? new Date(startdate + 'T12:00:00')  // meio-dia para evitar deslocamento de fuso
   : now;
+
 
 
      // 🔐 Criptografar campos sensíveis
@@ -132,7 +133,7 @@ export const updateProcess = async (req: Request, res: Response): Promise<void> 
     if (title !== undefined) fields.push(`title=$${fields.length + 1}`) && values.push(await encrypt(title));
     if (status !== undefined) fields.push(`status=$${fields.length + 1}`) && values.push(status);
     if (startDate !== undefined) 
-  fields.push(`startdate=$${fields.length + 1}`) && values.push(new Date(new Date(startDate).setHours(0,0,0,0)));
+fields.push(`startdate=$${fields.length + 1}`) && values.push(new Date(startDate + 'T12:00:00'));
 
 
     if (description !== undefined) fields.push(`description=$${fields.length + 1}`) && values.push(await encrypt(description));
