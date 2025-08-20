@@ -53,22 +53,49 @@ export const createClient = async (req: Request, res: Response) => {
 
 export const updateClient = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { name, cpf, email, phone, accessKey, updatedBy } = req.body;
+  const { name, cpf, email, phone, accessKey } = req.body;
+
   try {
     const now = new Date();
+    const fields: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
 
-    const encryptedName = await encrypt(name);
-    const encryptedCpf = await encrypt(cpf);
-    const encryptedEmail = await encrypt(email);
-    const encryptedPhone = await encrypt(phone);
-    const encryptedAccessKey = await encrypt(accessKey);
+    if (name !== undefined) {
+      fields.push(`name=$${idx++}`);
+      values.push(await encrypt(name));
+    }
+    if (cpf !== undefined) {
+      fields.push(`cpf=$${idx++}`);
+      values.push(await encrypt(cpf));
+    }
+    if (email !== undefined) {
+      fields.push(`email=$${idx++}`);
+      values.push(await encrypt(email));
+    }
+    if (phone !== undefined) {
+      fields.push(`phone=$${idx++}`);
+      values.push(await encrypt(phone));
+    }
+    if (accessKey !== undefined) {
+      fields.push(`accesskey=$${idx++}`);
+      values.push(await encrypt(accessKey));
+    }
 
-    const { rows } = await pool.query(
-  `UPDATE client 
-   SET name=$1, cpf=$2, email=$3, phone=$4, accesskey=$5, updatedat=$6
-   WHERE id=$7 RETURNING *`,
-  [encryptedName, encryptedCpf, encryptedEmail, encryptedPhone, encryptedAccessKey, now, id]
-);
+    // sempre atualiza updatedat
+    fields.push(`updatedat=$${idx++}`);
+    values.push(now);
+
+    // id no final
+    values.push(id);
+
+    const query = `
+      UPDATE client 
+      SET ${fields.join(', ')}
+      WHERE id=$${idx}
+      RETURNING *`;
+
+    const { rows } = await pool.query(query, values);
 
     if (rows[0]) {
       const decryptedClient = await decryptClientFields(rows[0]);
@@ -77,10 +104,11 @@ export const updateClient = async (req: Request, res: Response) => {
       res.status(404).json({ error: 'Cliente não encontrado' });
     }
   } catch (error) {
-  console.error('Erro ao atualizar cliente:', error); // 👈 mostra no console
+    console.error('Erro ao atualizar cliente:', error);
     res.status(500).json({ error: 'Erro ao atualizar cliente' });
   }
 };
+
 
 export const deleteClient = async (req: Request, res: Response) => {
   const { id } = req.params;
