@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import { pool } from '../db';
 import { encrypt, decrypt, crypto, bcrypt } from '../services/kmsService';
+import { format } from 'date-fns'; // npm install date-fns
 
 // 🔓 Descriptografar os campos sensíveis ao retornar dados
-// 🔓 Descriptografar os campos sensíveis ao retornar dados
+
 async function decryptProcessFields(process: any) {
   const decryptedUpdates = await Promise.all(
     (process.updates || []).map(async (update: any) => ({
@@ -20,6 +21,9 @@ async function decryptProcessFields(process: any) {
     description: await decrypt(process.description),
     lawyer: await decrypt(process.lawyer),
     updates: decryptedUpdates,
+    startdate: process.startdate
+      ? format(new Date(process.startdate), 'yyyy-MM-dd') // força YYYY-MM-DD
+      : null,
   };
 }
 
