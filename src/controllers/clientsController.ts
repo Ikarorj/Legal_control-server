@@ -15,6 +15,7 @@ async function decryptClientFields(client: any) {
 }
 
 
+
 export const getAllClients = async (_req: Request, res: Response) => {
   try {
     const { rows } = await pool.query('SELECT * FROM client');
