@@ -33,17 +33,15 @@ export const createClient = async (req: Request, res: Response) => {
 
     const encryptedName = await encrypt(name);
     const encryptedCpf = await encrypt(cpf);
-    const encryptedEmail = email ? await encrypt(email) : null;
-    const encryptedPhone = phone ? await encrypt(phone) : null;
-
+    const encryptedEmail = await encrypt(email);
+    const encryptedPhone = await encrypt(phone);
     const encryptedAccessKey = await encrypt(accessKey);
 
     const { rows } = await pool.query(
-  `INSERT INTO client (name, cpf, email, phone, accesskey, createdat, updatedat, createdby)
-   VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-  [encryptedName, encryptedCpf, encryptedEmail, encryptedPhone, encryptedAccessKey, now, now, createdBy || 1]
-);
-
+      `INSERT INTO client (name, cpf, email, phone, accesskey, createdat, updatedat, createdby)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+      [encryptedName, encryptedCpf, encryptedEmail, encryptedPhone, encryptedAccessKey, now, now, createdBy || 1]
+    );
 
     const decryptedClient = await decryptClientFields(rows[0]);
     res.status(201).json(decryptedClient);
