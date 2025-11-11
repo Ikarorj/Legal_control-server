@@ -46,8 +46,11 @@ export const createClient = async (req: Request, res: Response) => {
 
     const decryptedClient = await decryptClientFields(rows[0]);
     res.status(201).json(decryptedClient);
-  } catch {
-    res.status(500).json({ error: 'Erro ao cadastrar cliente' });
+  } catch (error: any) {
+    console.error('Erro ao cadastrar cliente:', error);
+
+    // Aqui você pode tratar erros específicos, se quiser
+    res.status(500).json({ error: error.message || 'Erro ao cadastrar cliente' });
   }
 };
 

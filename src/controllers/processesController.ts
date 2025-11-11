@@ -28,12 +28,26 @@ async function decryptProcessFields(process: any) {
 }
 
 
-export const getAllProcesses = async (_req: Request, res: Response) => {
+export const getAllProcesses = async (req: Request, res: Response) => {
   try {
+    // Pega page e limit da query string (ex: /process?page=2&limit=20)
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const offset = (page - 1) * limit;
+
+    // Busca paginada com JOINs
     const { rows } = await pool.query(`
-      SELECT p.*, c.name AS client_name, sp.name AS situacao_prisional, cv.name AS comarca_vara,
+      SELECT p.*, 
+             c.name AS client_name, 
+             sp.name AS situacao_prisional, 
+             cv.name AS comarca_vara,
              tc.name AS tipo_crime,
-             COALESCE(json_agg(json_build_object('id', pu.id, 'description', pu.description, 'author', pu.author, 'date', pu.date)) FILTER (WHERE pu.id IS NOT NULL), '[]') AS updates
+             COALESCE(
+               json_agg(
+                 json_build_object('id', pu.id, 'description', pu.description, 'author', pu.author, 'date', pu.date)
+               ) FILTER (WHERE pu.id IS NOT NULL),
+               '[]'
+             ) AS updates
       FROM process p
       LEFT JOIN client c ON c.id = p.clientid
       LEFT JOIN situacaoprisional sp ON sp.id = p.situacaoprisionalid
@@ -41,16 +55,30 @@ export const getAllProcesses = async (_req: Request, res: Response) => {
       LEFT JOIN tipocrime tc ON tc.id = p.tipocrimeid
       LEFT JOIN processupdate pu ON pu.processid = p.id
       GROUP BY p.id, c.name, sp.name, cv.name, tc.name
-      ORDER BY p.id;`
-    );
+      ORDER BY p.id DESC
+      LIMIT $1 OFFSET $2;
+    `, [limit, offset]);
+
+    // Conta total de registros (para o frontend saber quantas páginas há)
+    const totalResult = await pool.query('SELECT COUNT(*) FROM process');
+    const total = parseInt(totalResult.rows[0].count);
+
+    // Descriptografa os campos sensíveis
     const decryptedRows = await Promise.all(rows.map(decryptProcessFields));
 
-    res.json(decryptedRows);
-  } catch  (error)  {
+    // Retorna os dados + info de paginação
+    res.json({
+      data: decryptedRows,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    });
+  } catch (error) {
     console.error('Erro ao buscar processos:', error);
     res.status(500).json({ error: 'Erro ao buscar processos' });
   }
 };
+
 
 export const createProcess = async (req: Request, res: Response) => {
   const {

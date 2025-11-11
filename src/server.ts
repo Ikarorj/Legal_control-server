@@ -11,9 +11,8 @@ const PORT = process.env.PORT || 3000;
 
 
 const allowedOrigins = [
-  'https://process-portal.onrender.com',
-  'https://preview--client-process-portal.lovable.app',
-  'http://192.168.1.9:8080'
+  'http://192.168.1.6:8080',
+  'https://legalcontrol-cris-front.onrender.com'
 ];
 
 
@@ -30,3 +29,6 @@ app.use('/sistema', sistemaRoutes);
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
+
+console.log('servidor odando no ip:', process.env.IP || 'localhost');
+console.log('servidor rodando na porta:', PORT);

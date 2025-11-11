@@ -23,26 +23,12 @@ async function encrypt(text: string): Promise<string> {
 async function insertEncryptedUsers() {
   const users = [
     {
-      name: 'Dra. Maria Silva',
-      email: 'maria@escritorio.com',
+      name: 'teste',
+      email: 'teste@hotmail.com',
       cpf: '123.456.789-00',
       role: 'admin',
-      password: 'admin123',
-    },
-    {
-      name: 'João Santos',
-      email: 'joao@escritorio.com',
-      cpf: '987.654.321-00',
-      role: 'employee',
-      password: 'func123',
-    },
-    {
-      name: 'Cláudia Almeida',
-      email: 'claudia@escritorio.com',
-      cpf: '321.123.456-78',
-      role: 'employee',
-      password: 'senha123',
-    },
+      password: 'adm@123',
+    }
   ];
 
   for (const user of users) {
